@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	session "github.com/aws/aws-sdk-go/aws/session"
 	opensearch "github.com/opensearch-project/opensearch-go"
 	opensearchapi "github.com/opensearch-project/opensearch-go/opensearchapi"
+	requestsigner "github.com/opensearch-project/opensearch-go/signer/aws"
 	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 	"github.com/rs/zerolog/log"
 )
@@ -35,6 +37,11 @@ type OpenSearchConfig struct {
 
 func NewOpenSearch(cfg *OpenSearchConfig) (*OpenSearch, error) {
 
+	signer, err := requestsigner.NewSigner(session.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure request signer: %w", err)
+	}
+
 	tlsClientConfig, err := setupTLS(&cfg.TLS)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup TLS: %w", err)
@@ -47,6 +54,7 @@ func NewOpenSearch(cfg *OpenSearchConfig) (*OpenSearch, error) {
 		Transport: &http.Transport{
 			TLSClientConfig: tlsClientConfig,
 		},
+		Signer: signer,
 	})
 	if err != nil {
 		return nil, err
